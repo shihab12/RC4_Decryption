@@ -1,0 +1,96 @@
+module ksa_part2a(reset,start_2a, secret_key, CLOCK_50, address_2a);
+
+input logic CLOCK_50, reset, start_2a;
+input logic [23:0] secret_key;
+logic [11:0] state;
+logic [7:0] i, j, data_i, data_j, modulo, address;
+
+logic enable,
+
+parameter key_length = 2'd3;
+
+parameter idle = 		12'b000_001_000_0000;
+parameter ask_value_si = 12'b000_010_000_0000;
+parameter wait_si = 	12'b000_011_000_0000;
+parameter read_si = 	12'b000_100_000_0000;
+parameter calculate_j =  12'b000_101_000_0000;
+parameter ask_value_sj = 12'b000_110_000_0000;
+parameter wait_sj = 	12'b000_111_000_0000;
+parameter read_sj = 	12'b0001_000_000_0000;
+parameter start_swap = 	12'b001_001_000_0000;
+parameter increment_i = 12'b001_010_000_0000;
+parameter finish = 		12'b001_011_000_0000;
+parameter wait_swap = 	12'b001_100_000_0000;
+parameter finish_swap = 12'b001_101_000_0000;
+
+
+s_memory S(.address(address), .data(j), .wren(enable), .q(q));
+
+swap   2a_swap(CLOCK_50, start_swapping, finish_swapping, data_i, data_j, i, j, address, data, enable);
+
+always@(*)begin
+if(modulo == 8'd0)
+	secret_key = 24'd1;
+else if(modulo == 8'd1)
+	secret_key = 24'd2;
+else if(modulo == 8'd2)
+	secret_key = 24'd73;
+	end
+	
+
+
+always_ff@(posedge CLOCK_50 or posedge reset)begin
+if(reset)
+	state <= idle;
+else begin
+	case(state) 
+		idle : begin if(start_2a)
+						state <= ask_value_si;
+					else
+						state <= finish;
+		ask_value_si : state <= wait_si;
+		wait_si : state <= read_si;
+		read_si : state <= calculate_j;
+		calculate_j : state <= ask_value_sj;
+		wait_sj : state <= read_sj;
+		read_sj : state <= start_swap;
+		start_swap : state <= wait_swap;
+		wait_swapping : state <= finish_swap;
+		finish_swap : begin if(finish_swapping)
+							state <= increment_i;
+							else
+							state <= finish_swapping;
+		increment_i : begin if(i < 8'd255)
+							state <= ask_value_si;
+							else
+							state <= idle;
+						end
+		finish : state <= finish;
+		default : state <= idle;
+	endcase
+	end
+	
+	always_ff@(posedge CLOCK_50)begin
+		case(state)
+			idle : 			{i, j, enable, } <= {i, j, 1'b0};
+			ask_value_si : 	{i, j, enable, modulo, address} <= {i, j , 1'bo, i%3, i};
+			wait_si : 		{i, j, enable} <= {i, j, 1'b0};
+			read_si : 		{i, j, enable, data_i} <= {i, j, 1'b0,q};
+			calculate_j :   {i, j, enable} <= {i, (j+data_i+secret_key), 1'b0};
+			wait_sj : 		{i, j, enable, address} <= {i, j, 1'b0, j};
+			read_sj : 		{i, j, enable, data_j} <= {i, j, 1'b0, q};
+			start_swap : 	start_swapping <= 1'b1;
+			increment_i : 	{i, j, enable, start_swapping} <= {(i+1'b1), j, 1'b0, 1'b0};
+			finish :  		{i, j, enable} <= {1'b0, 1'b0, 1'b0};
+			default : 		{i, j, enable} <= {1'b0, 1'b0, 1'b0};
+		endcase
+	end
+
+	endmodule
+	
+			
+			
+		
+				
+		
+	

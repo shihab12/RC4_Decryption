@@ -1,0 +1,104 @@
+
+module ksa_v(CLOCK_50,
+    KEY[3:0],
+    SW[9:0],
+    LEDR[9:0],
+    HEX0[6:0],
+    HEX1[6:0],
+    HEX2[6:0],
+    HEX3[6:0],
+    HEX4[6:0],
+    HEX5[6:0]);
+	
+	input CLOCK_50;
+	input[3:0] KEY;
+   input[9:0] SW;
+   output[9:0] LEDR;
+   output[6:0] HEX0;
+   output[6:0] HEX1;
+   output[6:0] HEX2;
+   output[6:0] HEX3;
+   output[6:0] HEX4;
+   output[6:0] HEX5;
+	
+	ksa vhdl_to_verilog(.CLOCK_50(CLOCK_50),
+    .KEY(KEY),
+    .SW(SW),
+    .LEDR(LEDR),
+    .HEX0(HEX0),
+    .HEX1(HEX1),
+    .HEX2(HEX2),
+    .HEX3(HEX3),
+    .HEX4(HEX4),
+    .HEX5(HEX5));
+	
+	logic [11:0] state;
+	logic [7:0] address;
+	logic [7:0] counter;
+	logic [7:0] data;
+	logic enable;
+	logic [7:0] q;
+	
+	
+	
+	parameter idle =   12'b000_000000000;
+	parameter start =  12'b010_000000001;
+	parameter finish = 12'b100_000000000;
+	
+	always_ff@(posedge CLOCK_50)begin
+	case(state)
+	
+		idle : if(counter < 8'd255)
+					state <= start;
+				else 
+				state <= finish;
+		
+		start : if(counter < 8'd255)
+				state <= idle;
+				else 
+				state <= finish;
+		
+		finish : state <=finish;
+		
+		default : state <= idle;
+		endcase
+		end
+		
+		always_ff@(posedge CLOCK_50)begin
+		case(state)
+		
+		idle : begin 
+				counter <= counter;
+				data <= data;
+				address <= address;
+				enable <= state[0];
+				end
+				
+		start : begin
+				counter <= counter + 1'b1;
+				data <= counter;
+				address <= counter;
+				enable <= start[0];
+				end
+		
+		finish : begin 
+				counter <= counter;
+				data <= data;
+				address <= address;
+				enable <= state[0];
+				end
+		default : state <= idle;
+endcase
+end
+
+s_memory S(.address(address),
+		.clock(CLOCK_50),
+		.data(data),
+		.wren(enable),
+		.q(q));
+		
+
+endmodule
+		
+	
+	
